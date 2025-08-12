@@ -254,8 +254,124 @@ Contributions are welcome! Areas for improvement:
 
 This project uses the go-nsdp library and follows its licensing terms.
 
+## TLV Discovery Tool
+
+### Overview
+The `nsdp_discovery` tool systematically scans for all possible NSDP TLV (Type-Length-Value) parameters supported by your switches. This helps discover undocumented or device-specific parameters beyond the standard set.
+
+### Building the Discovery Tool
+```bash
+# Build the discovery tool
+./build_discovery.sh
+```
+
+### Usage Examples
+
+#### Full Range Scan (WARNING: Very slow!)
+```bash
+# Scan entire TLV space (0x0000 to 0xFFFF) - Takes hours!
+./nsdp_discovery -i eth0 -o full_scan_results.txt
+```
+
+#### Quick Known TLV Test
+```bash
+# Test only the known TLV ranges efficiently
+./test_known_tlvs.sh eth0
+```
+
+#### Custom Range Scanning
+```bash
+# Scan specific range
+./nsdp_discovery -i eth0 -start 1000 -end 2000 -o vlan_range.txt
+
+# Scan with verbose output and custom timing
+./nsdp_discovery -i eth0 -start 0c00 -end 9000 -v -batch 50 -delay 200ms
+```
+
+### Discovery Tool Options
+
+| Option | Description | Default | Example |
+|--------|-------------|---------|---------|
+| `-i <interface>` | Network interface (required) | - | `-i eth0` |
+| `-start <hex>` | Starting TLV hex value | 0000 | `-start 1000` |
+| `-end <hex>` | Ending TLV hex value | FFFF | `-end 2000` |
+| `-t <duration>` | Query timeout | 10s | `-t 30s` |
+| `-batch <num>` | TLVs per batch | 100 | `-batch 50` |
+| `-delay <duration>` | Delay between batches | 100ms | `-delay 200ms` |
+| `-o <file>` | Output file | - | `-o results.txt` |
+| `-v` | Verbose output | false | `-v` |
+
+### Known TLV Ranges
+Based on documentation and testing, these TLV ranges are known to contain valid parameters:
+
+| TLV | Hex | Purpose |
+|-----|-----|---------|
+| 3072 | 0x0c00 | Port status information |
+| 4096 | 0x1000 | Port statistics |
+| 7168 | 0x1c00 | Unknown/device-specific |
+| 8192 | 0x2000 | VLAN engine configuration |
+| 9216 | 0x2400 | VLAN membership |
+| 10240 | 0x2800 | 802.1Q VLAN settings |
+| 12288 | 0x3000 | Port VLAN ID (PVID) |
+| 13312 | 0x3400 | QoS engine |
+| 14336 | 0x3800 | QoS priority settings |
+| 19456 | 0x4c00 | Rate limiting |
+| 21504 | 0x5400 | Unknown/device-specific |
+| 22528 | 0x5800 | Unknown/device-specific |
+| 23552 | 0x5c00 | Port mirroring |
+| 24576 | 0x6000 | Available ports |
+| 25600 | 0x6400 | Unknown/device-specific |
+| 26624 | 0x6800 | IGMP snooping |
+| 27648 | 0x6c00 | Multicast blocking |
+| 28672 | 0x7000 | IGMPv3 validation |
+| 32768 | 0x8000 | Unknown/device-specific |
+| 35840 | 0x8c00 | Unknown/device-specific |
+| 36864 | 0x9000 | Loop detection |
+
+### Sample Discovery Output
+```
+=== NSDP TLV Discovery Tool ===
+Interface: eth0
+Scanning range: 0x0C00 to 0x9000 (33281 TLVs)
+
+Found 1 device(s)
+
+=== Device 1 ===
+Device MAC: 00:11:22:33:44:55
+Device Name: NETGEAR-Switch
+Device Model: GS108Tv3
+
+=== Scan Results ===
+Total TLVs tested: 33281
+Valid TLVs found: 15
+Success rate: 0.05%
+Scan duration: 2m30s
+
+=== Valid TLVs ===
+0x0C00 (  3072):   8 bytes - 0101010100000000
+                   Interpretation: Port status data
+0x1000 (  4096):  64 bytes - 000000000012d687000000000098f3a1...
+                   Interpretation: Port statistics
+0x2000 (  8192):   1 bytes - 01
+                   Interpretation: VLAN engine enabled
+```
+
+### Performance Considerations
+- **Full scan**: Testing all 65,536 TLVs takes several hours
+- **Batch processing**: Reduces network load and prevents device overload
+- **Smart delays**: Prevents overwhelming the switch with rapid queries
+- **Range targeting**: Focus on known ranges for faster results
+
+### Best Practices
+1. **Start with known ranges**: Use `test_known_tlvs.sh` for quick validation
+2. **Use appropriate timeouts**: Increase timeout for slow networks
+3. **Save results**: Always use `-o` flag to preserve discoveries
+4. **Batch sizing**: Reduce batch size if experiencing timeouts
+5. **Network consideration**: Run during maintenance windows for production switches
+
 ## Related Tools
 
 - **NSDP Protocol**: [go-nsdp library](https://github.com/hdecarne-github/go-nsdp)
+- **NSDP Documentation**: [wireshark-nsdp repository](https://github.com/wireshark/wireshark/tree/master/epan/dissectors) for parameter specifications
 - **Netgear Documentation**: Official switch management guides
 - **Network Discovery**: Consider SNMP tools for additional management features
