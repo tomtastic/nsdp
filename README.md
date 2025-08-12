@@ -12,21 +12,25 @@ This tool provides extensive capabilities for interacting with Netgear managed s
 - **MAC Address Discovery**: Locate switches on the network
 - **Device Information**: Model, name, firmware/hardware versions, serial number
 - **System Identification**: Complete device fingerprinting
+- **Location Information**: Physical device location and system description
 
 ### Network Configuration
 - **IP Configuration**: IP address, subnet mask, gateway settings
 - **DHCP Status**: Current DHCP configuration state
 - **Network Connectivity**: Gateway and routing information
+- **VLAN Management**: VLAN configuration, port assignments, tagged/untagged ports
 
 ### System Monitoring
 - **System Status**: Password protection status, uptime tracking
 - **Statistics**: System-wide statistics and reset timestamps
 - **Health Monitoring**: Overall system health indicators
+- **Firmware Management**: Active firmware slot tracking and version information
 
 ### Port Management
 - **Port Statistics**: Comprehensive RX/TX metrics (bytes, packets, errors, drops)
-- **Port Status**: Link state, speed, duplex settings
+- **Port Status**: Link state, speed, duplex settings, real-time port monitoring
 - **Smart Port Detection**: Automatically detects available ports
+- **Link Status Monitoring**: Real-time port connectivity and performance data
 
 ### Advanced Features
 - **VLAN Configuration**: VLAN settings, port assignments, tagged/untagged ports
@@ -112,68 +116,68 @@ go build nsdp.go
 ## Sample Output
 
 ```
-=== Netgear Switch Information ===
+=== Netgear Switch Discovery Protocol (NSDP) Query ===
+Interface: eth0
+Timeout: 5s
 
+Found 1 NSDP device(s):
+
+=== Device 1 ===
 --- Device Identification ---
 Device MAC: 00:11:22:33:44:55
 Model: GS108Tv3
 Device Name: NETGEAR-Switch-Lab
-Firmware Version: 7.0.6.3
-Hardware Version: V3.0
-Serial Number: 1A2B3C4D5E6F
+Location: Server Room Rack 2
 
 --- Network Configuration ---
 IP Address: 192.168.1.100
 Subnet Mask: 255.255.255.0
 Gateway: 192.168.1.1
-DHCP Enabled: false
+DHCP: Disabled
 
---- System Status ---
-Password Protected: true
-Uptime: 15d 4h 32m 18s
-Statistics Reset: 2024-07-28 14:30:00
+--- Firmware Information ---
+Firmware Version (Slot 1): 7.0.6.3
+Firmware Version (Slot 2): 7.0.5.8
+Next Active Slot: Slot 1
+
+--- Port Status ---
+Port 1: Up (1000 Mbps, Full Duplex)
+Port 2: Down
+Port 3: Up (100 Mbps, Full Duplex)
+Port 4: Down
+Port 5: Up (1000 Mbps, Full Duplex)
+Port 6: Down
+Port 7: Down
+Port 8: Down
+
+--- VLAN Configuration ---
+VLAN 1: Tagged: [1,2,3,4], Untagged: [5,6,7,8]
+VLAN 10: Tagged: [1,2], Untagged: []
 
 --- Port Information ---
 Port 1 Statistics:
-  Link Status: Up (1000 Mbps, Full Duplex)
-  RX Bytes: 1,234,567,890
-  TX Bytes: 987,654,321
-  RX Packets: 1,234,567
-  TX Packets: 987,654
-  RX Errors: 0
-  TX Errors: 0
-  RX Drops: 12
-  TX Drops: 0
+  RX Bytes: 1234567890
+  TX Bytes: 987654321
+  Packets: 1234567
+  Broadcasts: 12345
+  Multicasts: 6789
+  Errors: 0
 
-Port 2 Statistics:
-  Link Status: Down
-  RX Bytes: 0
-  TX Bytes: 0
-  ...
+Port 3 Statistics:
+  RX Bytes: 456789123
+  TX Bytes: 321654987
+  Packets: 456789
+  Broadcasts: 4567
+  Multicasts: 2345
+  Errors: 2
 
---- VLAN Configuration ---
-VLAN 1 (Default):
-  Tagged Ports: 1,2,3,4
-  Untagged Ports: 5,6,7,8
-
---- Quality of Service ---
-Port 1 Priority: High
-Port 2 Priority: Normal
-Traffic Shaping: Enabled
-
---- Loop Detection ---
-Status: Enabled
-Affected Ports: None
-Detection Method: STP
-
---- Port Mirroring ---
-Status: Disabled
-Source Ports: None
-Destination Port: None
-
---- Rate Limiting ---
-Port 1: Ingress 100Mbps, Egress 100Mbps
-Port 2: No limits
+Port 5 Statistics:
+  RX Bytes: 789123456
+  TX Bytes: 654987321
+  Packets: 789123
+  Broadcasts: 7891
+  Multicasts: 3456
+  Errors: 0
 ```
 
 ## Supported Hardware

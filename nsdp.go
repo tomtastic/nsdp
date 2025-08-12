@@ -59,16 +59,27 @@ func queryNSDPDevices(conn *nsdp.Conn, timeout time.Duration, verbose bool) {
 	// Create a request message to discover devices
 	requestMsg := nsdp.NewMessage(nsdp.ReadRequest)
 	
-	// Add TLVs to query basic device information
-	requestMsg.AppendTLV(nsdp.EmptyDeviceMAC())
-	requestMsg.AppendTLV(nsdp.EmptyDeviceName())
-	requestMsg.AppendTLV(nsdp.EmptyDeviceModel())
-	requestMsg.AppendTLV(nsdp.EmptyDeviceIP())
-	requestMsg.AppendTLV(nsdp.EmptyDeviceNetmask())
-	requestMsg.AppendTLV(nsdp.EmptyRouterIP())
-	requestMsg.AppendTLV(nsdp.EmptyDHCPMode())
-	requestMsg.AppendTLV(nsdp.EmptyFWVersionSlot1())
-	requestMsg.AppendTLV(nsdp.EmptyFWVersionSlot2())
+	// Add TLVs to query comprehensive device information
+	// Basic device identification
+	requestMsg.AppendTLV(nsdp.EmptyDeviceMAC())          // 0x0001 - Device MAC address
+	requestMsg.AppendTLV(nsdp.EmptyDeviceName())         // 0x0003 - Device name
+	requestMsg.AppendTLV(nsdp.EmptyDeviceModel())        // 0x0004 - Device model
+	requestMsg.AppendTLV(nsdp.EmptyDeviceLocation())     // 0x0005 - Device system location
+	
+	// Network configuration
+	requestMsg.AppendTLV(nsdp.EmptyDeviceIP())           // 0x0006 - Device IP address
+	requestMsg.AppendTLV(nsdp.EmptyDeviceNetmask())      // 0x0007 - Device subnet mask
+	requestMsg.AppendTLV(nsdp.EmptyRouterIP())           // 0x0008 - Gateway IP address
+	requestMsg.AppendTLV(nsdp.EmptyDHCPMode())           // 0x000b - DHCP mode status
+	
+	// Firmware information
+	requestMsg.AppendTLV(nsdp.EmptyFWVersionSlot1())     // 0x000d - Firmware version slot 1
+	requestMsg.AppendTLV(nsdp.EmptyFWVersionSlot2())     // 0x000e - Firmware version slot 2
+	requestMsg.AppendTLV(nsdp.EmptyNextFWSlot())         // 0x000f - Next active firmware slot
+	
+	// Port and network status
+	requestMsg.AppendTLV(nsdp.EmptyPortStatus())         // 0x0c00 - Speed/link status of ports
+	requestMsg.AppendTLV(nsdp.EmptyVLANInfo())           // 0x2800 - VLAN information
 
 	if verbose {
 		fmt.Println("Sending NSDP discovery request...")
@@ -108,57 +119,155 @@ func queryNSDPDevices(conn *nsdp.Conn, timeout time.Duration, verbose bool) {
 func processDeviceResponse(msg *nsdp.Message, verbose bool) {
 	tlvs := msg.Body
 	
-	fmt.Println("--- Basic Device Information ---")
+	fmt.Println("--- Device Identification ---")
+	
+	// Track which information we've found
+	var deviceMAC, deviceName, deviceModel, deviceLocation string
+	var deviceIP, deviceNetmask, routerIP string
+	var dhcpMode string
+	var fwSlot1, fwSlot2, nextFWSlot string
+	var portStatus, vlanInfo []string
 	
 	for _, tlv := range tlvs {
 		switch v := tlv.(type) {
 		case *nsdp.DeviceMAC:
 			if v.MAC != nil {
-				fmt.Printf("Device MAC: %s\n", v.MAC.String())
+				deviceMAC = v.MAC.String()
 			}
 		case *nsdp.DeviceName:
 			if v.Name != "" {
-				fmt.Printf("Device Name: %s\n", v.Name)
+				deviceName = v.Name
 			}
 		case *nsdp.DeviceModel:
 			if v.Model != "" {
-				fmt.Printf("Model: %s\n", v.Model)
+				deviceModel = v.Model
+			}
+		case *nsdp.DeviceLocation:
+			if v.Location != "" {
+				deviceLocation = v.Location
 			}
 		case *nsdp.DeviceIP:
 			if v.IP != nil {
-				fmt.Printf("IP Address: %s\n", v.IP.String())
+				deviceIP = v.IP.String()
 			}
 		case *nsdp.DeviceNetmask:
 			if v.Netmask != nil {
-				fmt.Printf("Subnet Mask: %s\n", v.Netmask.String())
+				deviceNetmask = v.Netmask.String()
 			}
 		case *nsdp.RouterIP:
 			if v.IP != nil {
-				fmt.Printf("Gateway: %s\n", v.IP.String())
+				routerIP = v.IP.String()
 			}
 		case *nsdp.DHCPMode:
-			dhcpStatus := "Unknown"
 			switch v.Mode {
 			case 0:
-				dhcpStatus = "Disabled"
+				dhcpMode = "Disabled"
 			case 1:
-				dhcpStatus = "Enabled"
+				dhcpMode = "Enabled"
+			default:
+				dhcpMode = fmt.Sprintf("Unknown (%d)", v.Mode)
 			}
-			fmt.Printf("DHCP: %s\n", dhcpStatus)
 		case *nsdp.FWVersionSlot1:
 			if v.Version != "" {
-				fmt.Printf("Firmware Version (Slot 1): %s\n", v.Version)
+				fwSlot1 = v.Version
 			}
 		case *nsdp.FWVersionSlot2:
 			if v.Version != "" {
-				fmt.Printf("Firmware Version (Slot 2): %s\n", v.Version)
+				fwSlot2 = v.Version
 			}
+		case *nsdp.NextFWSlot:
+			if v.Slot != 0 {
+				nextFWSlot = fmt.Sprintf("Slot %d", v.Slot)
+			}
+		case *nsdp.PortStatus:
+			// Handle port status information
+			portInfo := fmt.Sprintf("Port %d: %s", v.Port, formatPortStatus(v))
+			portStatus = append(portStatus, portInfo)
+		case *nsdp.VLANInfo:
+			// Handle VLAN information
+			vlanDetails := fmt.Sprintf("VLAN %d: %s", v.VLANID, formatVLANInfo(v))
+			vlanInfo = append(vlanInfo, vlanDetails)
 		default:
 			if verbose {
 				fmt.Printf("Unknown TLV type: %T\n", tlv)
 			}
 		}
 	}
+	
+	// Display device identification
+	if deviceMAC != "" {
+		fmt.Printf("Device MAC: %s\n", deviceMAC)
+	}
+	if deviceModel != "" {
+		fmt.Printf("Model: %s\n", deviceModel)
+	}
+	if deviceName != "" {
+		fmt.Printf("Device Name: %s\n", deviceName)
+	}
+	if deviceLocation != "" {
+		fmt.Printf("Location: %s\n", deviceLocation)
+	}
+	
+	// Display network configuration
+	if deviceIP != "" || deviceNetmask != "" || routerIP != "" || dhcpMode != "" {
+		fmt.Println("\n--- Network Configuration ---")
+		if deviceIP != "" {
+			fmt.Printf("IP Address: %s\n", deviceIP)
+		}
+		if deviceNetmask != "" {
+			fmt.Printf("Subnet Mask: %s\n", deviceNetmask)
+		}
+		if routerIP != "" {
+			fmt.Printf("Gateway: %s\n", routerIP)
+		}
+		if dhcpMode != "" {
+			fmt.Printf("DHCP: %s\n", dhcpMode)
+		}
+	}
+	
+	// Display firmware information
+	if fwSlot1 != "" || fwSlot2 != "" || nextFWSlot != "" {
+		fmt.Println("\n--- Firmware Information ---")
+		if fwSlot1 != "" {
+			fmt.Printf("Firmware Version (Slot 1): %s\n", fwSlot1)
+		}
+		if fwSlot2 != "" {
+			fmt.Printf("Firmware Version (Slot 2): %s\n", fwSlot2)
+		}
+		if nextFWSlot != "" {
+			fmt.Printf("Next Active Slot: %s\n", nextFWSlot)
+		}
+	}
+	
+	// Display port status information
+	if len(portStatus) > 0 {
+		fmt.Println("\n--- Port Status ---")
+		for _, status := range portStatus {
+			fmt.Println(status)
+		}
+	}
+	
+	// Display VLAN information
+	if len(vlanInfo) > 0 {
+		fmt.Println("\n--- VLAN Configuration ---")
+		for _, vlan := range vlanInfo {
+			fmt.Println(vlan)
+		}
+	}
+}
+
+// Helper function to format port status information
+func formatPortStatus(ps *nsdp.PortStatus) string {
+	status := "Down"
+	if ps.LinkUp {
+		status = fmt.Sprintf("Up (%d Mbps, %s)", ps.Speed, ps.Duplex)
+	}
+	return status
+}
+
+// Helper function to format VLAN information
+func formatVLANInfo(vi *nsdp.VLANInfo) string {
+	return fmt.Sprintf("Tagged: %v, Untagged: %v", vi.TaggedPorts, vi.UntaggedPorts)
 }
 
 func queryDeviceDetails(conn *nsdp.Conn, deviceMsg *nsdp.Message, timeout time.Duration, verbose bool) {
